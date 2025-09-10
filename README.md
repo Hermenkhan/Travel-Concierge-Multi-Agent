@@ -1,48 +1,41 @@
 
 
-# Travel Concierge – Multi-Agent Workflow with LangGraph
+# 🧳 Travel Concierge – Multi-Agent Workflow with LangGraph
 
-This project demonstrates a production-style multi-agent workflow built with LangGraph
-.
-The workflow models a Travel Concierge that plans a 3-day trip using live weather and places APIs, with built-in guardrails, fallbacks, retries, and observability.
+This project demonstrates a **production-style multi-agent workflow** built with [LangGraph](https://github.com/langchain-ai/langgraph).
+The workflow models a **Travel Concierge** that plans a 3-day trip using live weather and places APIs, with built-in **guardrails, fallbacks, retries, and observability**.
 
-✨ Features
+---
 
-Multi-Agent Collaboration
+## ✨ Features
 
-Researcher → calls weather, places, and search APIs.
+* **Multi-Agent Collaboration**
 
-Planner → parses the query into structured trip plan.
+  * **Researcher** → calls weather, places, and search APIs.
+  * **Planner** → parses the query into structured trip plan.
+  * **Executor** → generates final itinerary using LLM (Groq).
+  * **Reviewer** → validates schema & repairs invalid outputs.
+* **Guardrails**
 
-Executor → generates final itinerary using LLM (Groq).
+  * Prompt hardening in agent prompts (forbids secret exfiltration, misuse, jailbreaks).
+  * Schema validation with **Pydantic** (`ItineraryOutput`).
+  * Toxicity / policy checks (lightweight moderation step).
+* **Resilience**
 
-Reviewer → validates schema & repairs invalid outputs.
+  * Tool retries with exponential backoff.
+  * Per-node fallbacks (executor has minimal itinerary fallback).
+  * Circuit breaker pattern if repeated failures.
+* **Observability**
 
-Guardrails
+  * Integrated with **LangSmith** for tracing, tokens, and latency tracking.
+  * Example traces exported to `artifacts/sample_trace.json`.
+* **(Optional)** MCP Tool integration (filesystem/OpenAPI stubs).
 
-Prompt hardening in agent prompts (forbids secret exfiltration, misuse, jailbreaks).
+---
 
-Schema validation with Pydantic (ItineraryOutput).
+## 📂 Project Structure
 
-Toxicity / policy checks (lightweight moderation step).
-
-Resilience
-
-Tool retries with exponential backoff.
-
-Per-node fallbacks (executor has minimal itinerary fallback).
-
-Circuit breaker pattern if repeated failures.
-
-Observability
-
-Integrated with LangSmith for tracing, tokens, and latency tracking.
-
-Example traces exported to artifacts/sample_trace.json.
-
-(Optional) MCP Tool integration (filesystem/OpenAPI stubs).
-
-📂 Project Structure
+```
 ├── src
 │   ├── graph.py              # LangGraph orchestration
 │   ├── state.py              # Shared state definition
@@ -69,45 +62,57 @@ Example traces exported to artifacts/sample_trace.json.
 │   └── sample_trace.json     # Example run trace
 ├── README.md                 # Project docs
 └── .env.example              # Example environment variables
+```
 
-🚀 Setup
+---
 
-Clone Repo
+## 🚀 Setup
 
-git clone https://github.com/<your-org>/travel-concierge-langgraph.git
-cd travel-concierge-langgraph
+1. **Clone Repo**
 
+   ```bash
+   git clone https://github.com/<your-org>/travel-concierge-langgraph.git
+   cd travel-concierge-langgraph
+   ```
 
-Install Dependencies
+2. **Install Dependencies**
 
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
+   ```
 
+3. **Configure Environment**
+   Copy `.env.example` → `.env` and fill in:
 
-Configure Environment
-Copy .env.example → .env and fill in:
+   ```
+   GROQ_API_KEY=your_groq_key
+   SERPER_API_KEY=your_serper_key
+   RAPIDAPI_KEY=your_rapidapi_key
+   LANGCHAIN_API_KEY=your_langsmith_key
+   LANGCHAIN_PROJECT=travel-concierge
+   ```
 
-GROQ_API_KEY=your_groq_key
-SERPER_API_KEY=your_serper_key
-RAPIDAPI_KEY=your_rapidapi_key
-LANGCHAIN_API_KEY=your_langsmith_key
-LANGCHAIN_PROJECT=travel-concierge
+4. **Run the Graph**
 
+   ```bash
+   python -m src.graph
+   ```
 
-Run the Graph
+---
 
-python -m src.graph
-
-🧪 Example Run
+## 🧪 Example Run
 
 Input:
 
+```python
 inputs = {"query": "plan a 3-day trip to New York"}
 result = graph.invoke(inputs)
 print(json.dumps(result["outputs"], indent=2))
-
+```
 
 Output (fallback example):
 
+```json
 {
   "city": "New York",
   "days": [
@@ -121,76 +126,65 @@ Output (fallback example):
   ],
   "weather_forecast": "Data unavailable, please check manually."
 }
+```
 
-🔒 Guardrails
+---
 
-Prompt Hardening
+## 🔒 Guardrails
 
-All system prompts forbid jailbreaks, secret exfiltration, or unsafe tool use.
+1. **Prompt Hardening**
 
-High-risk patterns (e.g. "ignore instructions") are explicitly blocked.
+   * All system prompts forbid jailbreaks, secret exfiltration, or unsafe tool use.
+   * High-risk patterns (e.g. "ignore instructions") are explicitly blocked.
 
-Schema Validation
+2. **Schema Validation**
 
-Every cross-node output must match ItineraryOutput.
+   * Every cross-node output must match `ItineraryOutput`.
+   * If invalid → violation is logged and fallback triggered.
 
-If invalid → violation is logged and fallback triggered.
+3. **Moderation Check**
 
-Moderation Check
+   * Outputs are scanned for toxic / unsafe text.
+   * If triggered → routed to Reviewer or human-in-the-loop.
 
-Outputs are scanned for toxic / unsafe text.
+---
 
-If triggered → routed to Reviewer or human-in-the-loop.
+## 🔁 Resilience
 
-🔁 Resilience
+* **Per-tool retries** with exponential backoff (max 2).
+* **Per-node fallback** (Executor falls back to minimal itinerary).
+* **Circuit breaker** if too many global failures → graceful summary with apology.
 
-Per-tool retries with exponential backoff (max 2).
+---
 
-Per-node fallback (Executor falls back to minimal itinerary).
+## 📊 Observability
 
-Circuit breaker if too many global failures → graceful summary with apology.
+* **LangSmith integration**: traces, metrics, and run artifacts.
+* Metrics summary (example run):
 
-📊 Observability
+  * Token usage: \~1.2k
+  * Avg tool latency: 850ms
+  * Failure count: 1
+  * Fallback rate: 33%
 
-LangSmith integration: traces, metrics, and run artifacts.
+See: `artifacts/sample_trace.json`
 
-Metrics summary (example run):
+---
 
-Token usage: ~1.2k
+## 🎥 Demo Video
 
-Avg tool latency: 850ms
+* **Happy path** → normal API calls + structured itinerary.
+* **Failure path** → API error triggers fallback.
+  (Video placeholder here – add your 3-min demo recording.)
 
-Failure count: 1
+---
 
-Fallback rate: 33%
 
-See: artifacts/sample_trace.json
 
-🎥 Demo Video
+---
 
-Happy path → normal API calls + structured itinerary.
 
-Failure path → API error triggers fallback.
-(Video placeholder here – add your 3-min demo recording.)
 
-✅ Acceptance Criteria Checklist
+-
 
- Runs locally with python -m src.graph
-
- Produces structured JSON output (ItineraryOutput schema)
-
- Shows fallback in demo
-
- Traces visible in LangSmith / exported logs
-
- README documents guardrails & tradeoffs
-
-📌 Notes & Trade-Offs
-
-Current city extraction is naive regex (could improve with NER).
-
-Reviewer repairs schema minimally (could be enhanced with an LLM).
-
-MCP integration (e.g., filesystem / docs server) is stubbed but can be extended.
-
-API usage limited by free tier quotas – fallback ensures graceful degradation.
+Would you like me to **include explicit example system prompts** (the “prompt hardening” ones you need for the report), or keep README high-level and leave them in `src/agents/` docstrings?
