@@ -167,7 +167,7 @@ Output (fallback example):
   * Failure count: 1
   * Fallback rate: 33%
 
-See: `artifacts/sample_trace.json`
+
 
 ---
 
@@ -187,4 +187,3 @@ See: `artifacts/sample_trace.json`
 
 -
 
-Would you like me to **include explicit example system prompts** (the “prompt hardening” ones you need for the report), or keep README high-level and leave them in `src/agents/` docstrings?
